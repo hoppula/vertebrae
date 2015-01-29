@@ -20,5 +20,9 @@
     "phantomjs": "^1.9.15",
     "uglify-js": "^2.4.16",
     "uglifyify": "^3.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hoppula/vertebrae.git"
   }
 }
