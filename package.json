@@ -12,11 +12,11 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.5.0",
-    "native-promise-only": "^0.7.6-a",
-    "underscore": "^1.7.0"
+    "native-promise-only": "^0.7.6-a"
   },
   "devDependencies": {
     "browserify": "^8.1.1",
+    "coffee-script": "^1.8.0",
     "derequire": "^1.2.0",
     "phantomjs": "^1.9.15",
     "uglify-js": "^2.4.16",
