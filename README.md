@@ -30,17 +30,16 @@ Also, no underscore-inspired Model methods at all.
 Constructor accepts root scope, underscore implementation and jQuery implementation.
 Underscore is 100% optional but jQuery (or a suitable replacement) is needed for Backbone.ajax and Backbone.View.
 
-  var Vertebrae = require('vertebrae');
-  var _ = require('underscore');
-  var $ = require('jquery');
-  var Backbone = Vertebrae(window, _, $);
+    var Vertebrae = require('vertebrae');
+    var _ = require('underscore');
+    var $ = require('jquery');
+    var Backbone = Vertebrae(window, _, $);
 
 Root option is only required for **Backbone.noConflict()**, so if you don't need that, you can just do:
 
-  var Vertebrae = require('vertebrae');
-  var $ = require('jquery');
-  var Backbone = Vertebrae({}, null, $);
-
+    var Vertebrae = require('vertebrae');
+    var $ = require('jquery');
+    var Backbone = Vertebrae({}, null, $);
 
 ## Individual requires
 
@@ -53,7 +52,9 @@ Due to Backbone architecture, Collection needs a Sync adapter when using the sta
     var ajax = require('vertebrae/adapters/axios');
     var Sync = require('vertebrae/sync')({ajax: ajax});
     var Model = require('vertebrae/model')({sync: Sync});
-    var Collection = require('vertebrae/collection')({sync: Sync}, Model);
+    // optional, you can pass your favorite underscore implementation to include additional methods
+    var _ = require('lodash');
+    var Collection = require('vertebrae/collection')({sync: Sync, _: _}, Model);
 
 ### Model
 
@@ -61,29 +62,31 @@ Collection notes also apply to model.
 
     var ajax = require('vertebrae/adapters/axios');
     var Sync = require('vertebrae/sync')({ajax: ajax});
-    var Model = require('vertebrae/model')({sync: Sync});
+    // optional, you can pass your favorite underscore implementation to include additional methods
+    var _ = require('lodash');
+    var Model = require('vertebrae/model')({sync: Sync, _: _});
 
 ### View
 
 View requires jQuery.
 
-  var $ = require('jquery');
-  var View = require('vertebrae/view')({$: $});
+    var $ = require('jquery');
+    var View = require('vertebrae/view')({$: $});
 
 ### Router
 
-Router takes **History** instance as option, but will initiate new instance if not included.
+Router takes **History** instance as option:
 
-  var History = require('vertebrae/history');
-  var Router = require('vertebrae/router')({history: new History});
+    var History = require('vertebrae/history');
+    var Router = require('vertebrae/router')({history: new History});
 
-or
+But will initialize new instance if not included:
 
-  var Router = require('vertebrae/router')();
+    var Router = require('vertebrae/router')();
 
 ### Events
 
-  var Events = require('vertebrae/events');
+    var Events = require('vertebrae/events');
 
 ## Development
 
