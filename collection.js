@@ -16,7 +16,7 @@ var Events = require('./events');
 var Helpers = require('./helpers');
 var extend = Helpers.extend;
 var wrapError = Helpers.wrapError;
-var _ = require('underscore');
+var utils = require('./utils');
 
 // Underscore methods that we want to implement on the Collection.
 // 90% of the core usefulness of Backbone Collections is actually implemented
@@ -32,6 +32,7 @@ var methods = ['forEach', 'each', 'map', 'collect', 'reduce', 'foldl',
 var attributeMethods = ['groupBy', 'countBy', 'sortBy', 'indexBy'];
 
 module.exports = function(BackboneContext, Model) {
+  var _ = BackboneContext && BackboneContext._ ? BackboneContext._ : utils;
   Model = Model || BackboneContext.Model;
 
   var Collection = function(models, options) {
@@ -76,8 +77,8 @@ module.exports = function(BackboneContext, Model) {
 
     // Remove a model, or a list of models from the set.
     remove: function(models, options) {
-      var singular = !_.isArray(models);
-      models = singular ? [models] : _.clone(models);
+      var singular = !Array.isArray(models);
+      models = singular ? [models] : models.slice();
       options || (options = {});
       for (var i = 0, length = models.length; i < length; i++) {
         var model = models[i] = this.get(models[i]);
@@ -104,14 +105,14 @@ module.exports = function(BackboneContext, Model) {
     set: function(models, options) {
       options = _.defaults({}, options, setOptions);
       if (options.parse) models = this.parse(models, options);
-      var singular = !_.isArray(models);
+      var singular = !Array.isArray(models);
       models = singular ? (models ? [models] : []) : models.slice();
       var id, model, attrs, existing, sort;
       var at = options.at;
       if (at != null) at = +at;
       if (at < 0) at += this.length + 1;
       var sortable = this.comparator && (at == null) && options.sort !== false;
-      var sortAttr = _.isString(this.comparator) ? this.comparator : null;
+      var sortAttr = typeof this.comparator === 'string' ? this.comparator : null;
       var toAdd = [], toRemove = [], modelMap = {};
       var add = options.add, merge = options.merge, remove = options.remove;
       var order = !sortable && add && remove ? [] : false;
@@ -186,7 +187,7 @@ module.exports = function(BackboneContext, Model) {
 
       // Unless silenced, it's time to fire all appropriate add/sort events.
       if (!options.silent) {
-        var addOpts = at != null ? _.clone(options) : options;
+        var addOpts = at != null ? _.extend({}, options) : options;
         for (var i = 0, length = toAdd.length; i < length; i++) {
           if (at != null) addOpts.index = at + i;
           (model = toAdd[i]).trigger('add', model, this, addOpts);
@@ -203,7 +204,7 @@ module.exports = function(BackboneContext, Model) {
     // any granular `add` or `remove` events. Fires `reset` when finished.
     // Useful for bulk operations and optimizations.
     reset: function(models, options) {
-      options = options ? _.clone(options) : {};
+      options = options ? _.extend({}, options) : {};
       for (var i = 0, length = this.models.length; i < length; i++) {
         this._removeReference(this.models[i], options);
       }
@@ -259,9 +260,12 @@ module.exports = function(BackboneContext, Model) {
     // Return models with matching attributes. Useful for simple cases of
     // `filter`.
     where: function(attrs, first) {
-      var matches = _.matches(attrs);
+      if (!attrs || !Object.keys(attrs).length) return first ? void 0 : [];
       return this[first ? 'find' : 'filter'](function(model) {
-        return matches(model.attributes);
+        for (var key in attrs) {
+          if (attrs[key] !== model.get(key)) return false;
+        }
+        return true;
       });
     },
 
@@ -279,10 +283,10 @@ module.exports = function(BackboneContext, Model) {
       options || (options = {});
 
       // Run sort based on type of `comparator`.
-      if (_.isString(this.comparator) || this.comparator.length === 1) {
+      if (typeof this.comparator === 'string' || this.comparator.length === 1) {
         this.models = this.sortBy(this.comparator, this);
       } else {
-        this.models.sort(_.bind(this.comparator, this));
+        this.models.sort(this.comparator.bind(this));
       }
 
       if (!options.silent) this.trigger('sort', this, options);
@@ -291,14 +295,16 @@ module.exports = function(BackboneContext, Model) {
 
     // Pluck an attribute from each model in the collection.
     pluck: function(attr) {
-      return _.invoke(this.models, 'get', attr);
+      return this.models.map(function(model) {
+        return model.get(attr);
+      });
     },
 
     // Fetch the default set of models for this collection, resetting the
     // collection when they arrive. If `reset: true` is passed, the response
     // data will be passed through the `reset` method instead of `set`.
     fetch: function(options) {
-      options = options ? _.clone(options) : {};
+      options = options ? _.extend({}, options) : {};
       if (options.parse === void 0) options.parse = true;
       var success = options.success;
       var collection = this;
@@ -316,7 +322,7 @@ module.exports = function(BackboneContext, Model) {
     // collection immediately, unless `wait: true` is passed, in which case we
     // wait for the server to agree.
     create: function(model, options) {
-      options = options ? _.clone(options) : {};
+      options = options ? _.extend({}, options) : {};
       if (!(model = this._prepareModel(model, options))) return false;
       if (!options.wait) this.add(model, options);
       var collection = this;
@@ -363,7 +369,7 @@ module.exports = function(BackboneContext, Model) {
         if (!attrs.collection) attrs.collection = this;
         return attrs;
       }
-      options = options ? _.clone(options) : {};
+      options = options ? _.extend({}, options) : {};
       options.collection = this;
       var model = new this.model(attrs, options);
       if (!model.validationError) return model;
@@ -411,26 +417,58 @@ module.exports = function(BackboneContext, Model) {
 
   });
 
-  // Mix in each Underscore method as a proxy to `Collection#models`.
-  _.each(methods, function(method) {
-    if (!_[method]) return;
-    Collection.prototype[method] = function() {
-      var args = [].slice.call(arguments);
-      args.unshift(this.models);
-      return _[method].apply(_, args);
-    };
-  });
-
-  // Use attributes instead of properties.
-  _.each(attributeMethods, function(method) {
-    if (!_[method]) return;
-    Collection.prototype[method] = function(value, context) {
-      var iterator = _.isFunction(value) ? value : function(model) {
-        return model.get(value);
+  if (_.each) {
+    // Mix in each Underscore method as a proxy to `Collection#models`.
+    _.each(methods, function(method) {
+      if (!_[method]) return;
+      Collection.prototype[method] = function() {
+        var args = [].slice.call(arguments);
+        args.unshift(this.models);
+        return _[method].apply(_, args);
       };
-      return _[method](this.models, iterator, context);
+    });
+
+    // Use attributes instead of properties.
+    _.each(attributeMethods, function(method) {
+      if (!_[method]) return;
+      Collection.prototype[method] = function(value, context) {
+        var iterator = _.isFunction(value) ? value : function(model) {
+          return model.get(value);
+        };
+        return _[method](this.models, iterator, context);
+      };
+    });
+
+  } else {
+    ['forEach', 'map', 'filter', 'some', 'every', 'reduce', 'reduceRight',
+      'indexOf', 'lastIndexOf'].forEach(function(method) {
+      Collection.prototype[method] = function(arg, context) {
+        return this.models[method](arg, context);
+      };
+    });
+
+    // Exoskeleton-specific:
+    Collection.prototype.find = function(iterator, context) {
+      var result;
+      this.some(function(value, index, list) {
+        if (iterator.call(context, value, index, list)) {
+          result = value;
+          return true;
+        }
+      });
+      return result;
     };
-  });
+
+    // Underscore methods that take a property name as an argument.
+    ['sortBy'].forEach(function(method) {
+      Collection.prototype[method] = function(value, context) {
+        var iterator = typeof value === 'function' ? value : function(model) {
+          return model.get(value);
+        };
+        return _[method](this.models, iterator, context);
+      };
+    });
+  }
 
   Collection.extend = extend;
 

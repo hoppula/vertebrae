@@ -16,7 +16,7 @@ var Helpers = require('./helpers');
 var eventsApi = Helpers.eventsApi;
 var eventSplitter = Helpers.eventSplitter;
 var triggerEvents = Helpers.triggerEvents;
-var _ = require('underscore');
+var _ = require('./utils');
 
 var Events = {
 
@@ -35,10 +35,13 @@ var Events = {
   once: function(name, callback, context) {
     if (!eventsApi(this, 'once', name, [callback, context]) || !callback) return this;
     var self = this;
-    var once = _.once(function() {
+    var ran;
+    var once = function() {
+      if (ran) return;
+      ran = true;
       self.off(name, once);
       callback.apply(this, arguments);
-    });
+    };
     once._callback = callback;
     return this.on(name, once, context);
   },
@@ -48,46 +51,27 @@ var Events = {
   // callbacks for the event. If `name` is null, removes all bound
   // callbacks for all events.
   off: function(name, callback, context) {
+    var retain, ev, events, names, i, l, j, k;
     if (!this._events || !eventsApi(this, 'off', name, [callback, context])) return this;
-
-    // Remove all callbacks for all events.
     if (!name && !callback && !context) {
       this._events = void 0;
       return this;
     }
-
-    var names = name ? [name] : _.keys(this._events);
-    for (var i = 0, length = names.length; i < length; i++) {
+    names = name ? [name] : Object.keys(this._events);
+    for (i = 0, l = names.length; i < l; i++) {
       name = names[i];
-
-      // Bail out if there are no events stored.
-      var events = this._events[name];
-      if (!events) continue;
-
-      // Remove all callbacks for this event.
-      if (!callback && !context) {
-        delete this._events[name];
-        continue;
-      }
-
-      // Find any remaining events.
-      var remaining = [];
-      for (var j = 0, k = events.length; j < k; j++) {
-        var event = events[j];
-        if (
-          callback && callback !== event.callback &&
-          callback !== event.callback._callback ||
-          context && context !== event.context
-        ) {
-          remaining.push(event);
+      if (events = this._events[name]) {
+        this._events[name] = retain = [];
+        if (callback || context) {
+          for (j = 0, k = events.length; j < k; j++) {
+            ev = events[j];
+            if ((callback && callback !== ev.callback && callback !== ev.callback._callback) ||
+                (context && context !== ev.context)) {
+              retain.push(ev);
+            }
+          }
         }
-      }
-
-      // Replace events if there are any remaining.  Otherwise, clean up.
-      if (remaining.length) {
-        this._events[name] = remaining;
-      } else {
-        delete this._events[name];
+        if (!retain.length) delete this._events[name];
       }
     }
 
@@ -153,7 +137,7 @@ var Events = {
     for (var id in listeningTo) {
       obj = listeningTo[id];
       obj.off(name, callback, this);
-      if (remove || _.isEmpty(obj._events)) delete this._listeningTo[id];
+      if (remove || !Object.keys(obj._events).length) delete this._listeningTo[id];
     }
     return this;
   }

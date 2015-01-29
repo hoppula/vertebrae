@@ -14,12 +14,13 @@ var Helpers = require('./helpers');
 var extend = Helpers.extend;
 var urlError = Helpers.urlError;
 var wrapError = Helpers.wrapError;
-var _ = require('underscore');
+var utils = require('./utils');
 
 // Underscore methods that we want to implement on the Model.
 var modelMethods = ['keys', 'values', 'pairs', 'invert', 'pick', 'omit', 'chain', 'isEmpty'];
 
 module.exports = function(BackboneContext) {
+  var _ = BackboneContext && BackboneContext._ ? BackboneContext._ : utils;
 
   var Model = function(attributes, options) {
     var attrs = attributes || {};
@@ -53,7 +54,7 @@ module.exports = function(BackboneContext) {
 
     // Return a copy of the model's `attributes` object.
     toJSON: function(options) {
-      return _.clone(this.attributes);
+      return _.extend({}, this.attributes);
     },
 
     // Proxy `Backbone.sync` by default -- but override this if you need
@@ -78,7 +79,7 @@ module.exports = function(BackboneContext) {
       return this.get(attr) != null;
     },
 
-    // Special-cased proxy to lodash's `_.matches` method.
+    // Special-cased proxy to Underscore's `_.matches` method.
     matches: function(attrs) {
       return _.matches(attrs)(this.attributes);
     },
@@ -111,7 +112,7 @@ module.exports = function(BackboneContext) {
       this._changing  = true;
 
       if (!changing) {
-        this._previousAttributes = _.clone(this.attributes);
+        this._previousAttributes = _.extend(Object.create(null), this.attributes);
         this.changed = {};
       }
       current = this.attributes, prev = this._previousAttributes;
@@ -170,7 +171,7 @@ module.exports = function(BackboneContext) {
     // Determine if the model has changed since the last `"change"` event.
     // If you specify an attribute name, determine if that attribute has changed.
     hasChanged: function(attr) {
-      if (attr == null) return !_.isEmpty(this.changed);
+      if (attr == null) return !!Object.keys(this.changed).length;
       return _.has(this.changed, attr);
     },
 
@@ -181,7 +182,7 @@ module.exports = function(BackboneContext) {
     // You can also pass an attributes object to diff against the model,
     // determining if there *would be* a change.
     changedAttributes: function(diff) {
-      if (!diff) return this.hasChanged() ? _.clone(this.changed) : false;
+      if (!diff) return this.hasChanged() ? _.extend(Object.create(null), this.changed) : false;
       var val, changed = false;
       var old = this._changing ? this._previousAttributes : this.attributes;
       for (var attr in diff) {
@@ -201,14 +202,14 @@ module.exports = function(BackboneContext) {
     // Get all of the attributes of the model at the time of the previous
     // `"change"` event.
     previousAttributes: function() {
-      return _.clone(this._previousAttributes);
+      return _.extend(Object.create(null), this._previousAttributes);
     },
 
     // Fetch the model from the server. If the server's representation of the
     // model differs from its current attributes, they will be overridden,
     // triggering a `"change"` event.
     fetch: function(options) {
-      options = options ? _.clone(options) : {};
+      options = options ? _.extend({}, options) : {};
       if (options.parse === void 0) options.parse = true;
       var model = this;
       var success = options.success;
@@ -261,7 +262,7 @@ module.exports = function(BackboneContext) {
         model.attributes = attributes;
         var serverAttrs = model.parse(resp, options);
         if (options.wait) serverAttrs = _.extend(attrs || {}, serverAttrs);
-        if (_.isObject(serverAttrs) && !model.set(serverAttrs, options)) {
+        if (serverAttrs && typeof serverAttrs === 'object' && !model.set(serverAttrs, options)) {
           return false;
         }
         if (success) success(model, resp, options);
@@ -283,7 +284,7 @@ module.exports = function(BackboneContext) {
     // Optimistically removes the model from its collection, if it has one.
     // If `wait: true` is passed, waits for the server to respond before removal.
     destroy: function(options) {
-      options = options ? _.clone(options) : {};
+      options = options ? _.extend({}, options) : {};
       var model = this;
       var success = options.success;
 
@@ -355,15 +356,17 @@ module.exports = function(BackboneContext) {
 
   });
 
-  // Mix in each Underscore method as a proxy to `Model#attributes`.
-  _.each(modelMethods, function(method) {
-    if (!_[method]) return;
-    Model.prototype[method] = function() {
-      var args = [].slice.call(arguments);
-      args.unshift(this.attributes);
-      return _[method].apply(_, args);
-    };
-  });
+  if (_.keys) {
+    // Mix in each Underscore method as a proxy to `Model#attributes`.
+    modelMethods.forEach(function(method) {
+      if (!_[method]) return;
+      Model.prototype[method] = function() {
+        var args = [].slice.call(arguments);
+        args.unshift(this.attributes);
+        return _[method].apply(_, args);
+      };
+    });
+  }
 
   Model.extend = extend;
 

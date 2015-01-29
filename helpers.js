@@ -5,7 +5,7 @@
 // Similar to `goog.inherits`, but uses a hash of prototype properties and
 // class properties to be extended.
 
-var _ = require('underscore');
+var _ = require('./utils');
 
 // Regular expression used to split event strings.
 var eventSplitter = /\s+/;
@@ -97,11 +97,19 @@ var wrapError = function(model, options) {
   };
 };
 
+// Checker for utility methods. Useful for custom builds.
+var utilExists = function(_) {
+  return function(method) {
+    return typeof _[method] === 'function';
+  };
+};
+
 module.exports = {
   eventsApi: eventsApi,
   eventSplitter: eventSplitter,
   extend: extend,
   triggerEvents: triggerEvents,
   urlError: urlError,
+  utilExists: utilExists,
   wrapError: wrapError
 };

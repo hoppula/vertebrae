@@ -1,3 +1,13 @@
+// Exoskeleton utils
+
+var array = [];
+var push = array.push;
+var slice = array.slice;
+var toString = ({}).toString;
+
+/** Used to generate unique IDs */
+var idCounter = 0;
+
 var htmlEscapes = {
   '&': '&amp;',
   '<': '&lt;',
@@ -6,71 +16,7 @@ var htmlEscapes = {
   "'": '&#39;'
 };
 
-var utils = {};
-
-utils.result = function result(object, property) {
-  var value = object ? object[property] : undefined;
-  return typeof value === 'function' ? object[property]() : value;
-};
-
-utils.defaults = function defaults(obj) {
-  slice.call(arguments, 1).forEach(function(item) {
-    for (var key in item) if (obj[key] === undefined)
-      obj[key] = item[key];
-  });
-  return obj;
-};
-
-utils.extend = function extend(obj) {
-  slice.call(arguments, 1).forEach(function(item) {
-    for (var key in item) obj[key] = item[key];
-  });
-  return obj;
-};
-
-utils.escape = function escape(string) {
-  return string == null ? '' : String(string).replace(/[&<>"']/g, function(match) {
-    return htmlEscapes[match];
-  });
-};
-
-utils.sortBy = function(obj, value, context) {
-  var iterator = typeof value === 'function' ? value : function(obj){ return obj[value]; };
-  return obj
-    .map(function(value, index, list) {
-      return {
-        value: value,
-        index: index,
-        criteria: iterator.call(context, value, index, list)
-      };
-    })
-    .sort(function(left, right) {
-      var a = left.criteria;
-      var b = right.criteria;
-      if (a !== b) {
-        if (a > b || a === void 0) return 1;
-        if (a < b || b === void 0) return -1;
-      }
-      return left.index - right.index;
-    })
-    .map(function(item) {
-      return item.value;
-    });
-};
-
-/** Used to generate unique IDs */
-var idCounter = 0;
-
-utils.uniqueId = function uniqueId(prefix) {
-  var id = ++idCounter + '';
-  return prefix ? prefix + id : id;
-};
-
-utils.has = function(obj, key) {
-  return Object.hasOwnProperty.call(obj, key);
-};
-
-utils.eq = function(a, b, aStack, bStack) {
+var eq = function(a, b, aStack, bStack) {
   // Identical objects are equal. `0 === -0`, but they aren't identical.
   // See the [Harmony `egal` proposal](http://wiki.ecmascript.org/doku.php?id=harmony:egal).
   if (a === b) return a !== 0 || 1 / a == 1 / b;
@@ -160,9 +106,124 @@ utils.eq = function(a, b, aStack, bStack) {
   return result;
 };
 
+var utils = {};
+
+utils.result = function result(object, property) {
+  var value = object ? object[property] : undefined;
+  return typeof value === 'function' ? object[property]() : value;
+};
+
+utils.defaults = function defaults(obj) {
+  slice.call(arguments, 1).forEach(function(item) {
+    for (var key in item) if (obj[key] === undefined)
+      obj[key] = item[key];
+  });
+  return obj;
+};
+
+utils.extend = function extend(obj) {
+  slice.call(arguments, 1).forEach(function(item) {
+    for (var key in item) obj[key] = item[key];
+  });
+  return obj;
+};
+
+utils.escape = function escape(string) {
+  return string == null ? '' : String(string).replace(/[&<>"']/g, function(match) {
+    return htmlEscapes[match];
+  });
+};
+
+utils.sortBy = function(obj, value, context) {
+  var iterator = typeof value === 'function' ? value : function(obj){ return obj[value]; };
+  return obj
+    .map(function(value, index, list) {
+      return {
+        value: value,
+        index: index,
+        criteria: iterator.call(context, value, index, list)
+      };
+    })
+    .sort(function(left, right) {
+      var a = left.criteria;
+      var b = right.criteria;
+      if (a !== b) {
+        if (a > b || a === void 0) return 1;
+        if (a < b || b === void 0) return -1;
+      }
+      return left.index - right.index;
+    })
+    .map(function(item) {
+      return item.value;
+    });
+};
+
+utils.uniqueId = function uniqueId(prefix) {
+  var id = ++idCounter + '';
+  return prefix ? prefix + id : id;
+};
+
+utils.has = function(obj, key) {
+  return Object.hasOwnProperty.call(obj, key);
+};
+
 // Perform a deep comparison to check if two objects are equal.
 utils.isEqual = function(a, b) {
   return eq(a, b, [], []);
 };
+
+utils.isRegExp = function(value) {
+  return value ? (typeof value === 'object' && toString.call(value) === '[object RegExp]') : false;
+};
+
+utils.pairs = function(obj) {
+  var keys = Object.keys(obj);
+  var length = keys.length;
+  var pairs = Array(length);
+  for (var i = 0; i < length; i++) {
+    pairs[i] = [keys[i], obj[keys[i]]];
+  }
+  return pairs;
+};
+
+utils.matches = function(attrs) {
+  var pairs = utils.pairs(attrs), length = pairs.length;
+  return function(obj) {
+    if (obj == null) return !length;
+    obj = new Object(obj);
+    for (var i = 0; i < length; i++) {
+      var pair = pairs[i], key = pair[0];
+      if (pair[1] !== obj[key] || !(key in obj)) return false;
+    }
+    return true;
+  };
+};
+
+utils.partial = function(func) {
+  var boundArgs = slice.call(arguments, 1);
+  return function() {
+    var position = 0;
+    var args = boundArgs.slice();
+    for (var i = 0, length = args.length; i < length; i++) {
+      if (args[i] === _) args[i] = arguments[position++];
+    }
+    while (position < arguments.length) args.push(arguments[position++]);
+    return func.apply(this, args);
+  };
+};
+
+utils.before = function(times, func) {
+  var memo;
+  return function() {
+    if (--times > 0) {
+      memo = func.apply(this, arguments);
+    } else {
+      func = null;
+    }
+    return memo;
+  };
+};
+
+utils.once = utils.partial(utils.before, 2);
 
 module.exports = utils;

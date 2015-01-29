@@ -6,11 +6,11 @@
 //     For all details and documentation:
 //     http://backbonejs.org
 
-var _ = require('underscore');
 var Events = require('./events');
 var History = require('./history');
+var utils = require('./utils');
 
-module.exports = function(root, $) {
+module.exports = function(root, _, $) {
 
   // Save the previous value of the `Backbone` variable, so that it can be
   // restored later on, if `noConflict` is used.
@@ -21,6 +21,9 @@ module.exports = function(root, $) {
   // For Backbone's purposes, jQuery, Zepto, Ender, or My Library (kidding) owns
   // the `$` variable.
   Backbone.$ = $;
+
+  // Use provided underscore implementation or fallback to utils
+  Backbone._ = _ || utils;
 
   // Set the default implementation of `Backbone.ajax` to proxy through to `$`.
   // Override this if you'd like to use a different library.

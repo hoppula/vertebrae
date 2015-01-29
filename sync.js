@@ -18,7 +18,7 @@
 // it difficult to read the body of `PUT` requests.
 
 var urlError = require('./helpers').urlError;
-var _ = require('underscore');
+var _ = require('./utils');
 
 // Map from CRUD to HTTP for our default `Backbone.sync` implementation.
 var methodMap = {
@@ -30,6 +30,7 @@ var methodMap = {
 };
 
 module.exports = function(BackboneContext) {
+
   return function(method, model, options) {
     var type = methodMap[method];
 

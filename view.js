@@ -14,14 +14,15 @@
 
 var Events = require('./events');
 var extend = require('./helpers').extend;
-var _ = require('underscore');
+var _ = require('./utils');
 
 module.exports = function(BackboneContext) {
 
   var View = function(options) {
     this.cid = _.uniqueId('view');
-    options || (options = {});
-    _.extend(this, _.pick(options, viewOptions));
+    if (options) Object.keys(options).forEach(function(key) {
+      if (viewOptions.indexOf(key) !== -1) this[key] = options[key];
+    }, this);
     this._ensureElement();
     this.initialize.apply(this, arguments);
   };
@@ -107,10 +108,10 @@ module.exports = function(BackboneContext) {
       this.undelegateEvents();
       for (var key in events) {
         var method = events[key];
-        if (!_.isFunction(method)) method = this[events[key]];
+        if (typeof method !== 'function') method = this[events[key]];
         if (!method) continue;
         var match = key.match(delegateEventSplitter);
-        this.delegate(match[1], match[2], _.bind(method, this));
+        this.delegate(match[1], match[2], method.bind(this));
       }
       return this;
     },

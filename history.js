@@ -9,11 +9,11 @@
 
 var Events = require('./events');
 var extend = require('./helpers').extend;
-var _ = require('underscore');
+var _ = require('./utils');
 
 var History = function() {
   this.handlers = [];
-  _.bindAll(this, 'checkUrl');
+  this.checkUrl = this.checkUrl.bind(this);
 
   // Ensure that `History` can be used outside of the browser.
   if (typeof window !== 'undefined') {
@@ -206,7 +206,7 @@ _.extend(History.prototype, Events, {
   // returns `false`.
   loadUrl: function(fragment) {
     fragment = this.fragment = this.getFragment(fragment);
-    return _.any(this.handlers, function(handler) {
+    return this.handlers.some(function(handler) {
       if (handler.route.test(fragment)) {
         handler.callback(fragment);
         return true;

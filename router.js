@@ -3,7 +3,7 @@
 
 var Events = require('./events');
 var extend = require('./helpers').extend;
-var _ = require('underscore');
+var _ = require('./utils');
 
 module.exports = function(BackboneContext) {
   BackboneContext = BackboneContext || {history: new require('./history')};
@@ -39,7 +39,7 @@ module.exports = function(BackboneContext) {
     //
     route: function(route, name, callback) {
       if (!_.isRegExp(route)) route = this._routeToRegExp(route);
-      if (_.isFunction(name)) {
+      if (typeof name === 'function') {
         callback = name;
         name = '';
       }
@@ -74,7 +74,7 @@ module.exports = function(BackboneContext) {
     _bindRoutes: function() {
       if (!this.routes) return;
       this.routes = _.result(this, 'routes');
-      var route, routes = _.keys(this.routes);
+      var route, routes = Object.keys(this.routes);
       while ((route = routes.pop()) != null) {
         this.route(route, this.routes[route]);
       }
@@ -97,7 +97,7 @@ module.exports = function(BackboneContext) {
     // treated as `null` to normalize cross-browser behavior.
     _extractParameters: function(route, fragment) {
       var params = route.exec(fragment).slice(1);
-      return _.map(params, function(param, i) {
+      return params.map(function(param, i) {
         // Don't decode the search params.
         if (i === params.length - 1) return param || null;
         return param ? decodeURIComponent(param) : null;
