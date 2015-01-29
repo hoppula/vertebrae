@@ -1,0 +1,25 @@
+{
+  "name": "vertebrae",
+  "version": "1.1.2",
+  "description": "Backbone as CommonJS modules",
+  "main": "index.js",
+  "scripts": {
+    "test": "phantomjs test/vendor/runner.js test/index.html?noglobals=true && coffee test/model.coffee",
+    "build": "browserify index.js -s Vertebrae | derequire > backbone.js",
+    "build_min": "browserify -g uglifyify index.js -s Vertebrae | derequire | uglifyjs > backbone.min.js"
+  },
+  "author": "Lari Hoppula <lari@hoppula.com>",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.5.0",
+    "native-promise-only": "^0.7.6-a",
+    "underscore": "^1.7.0"
+  },
+  "devDependencies": {
+    "browserify": "^8.1.1",
+    "derequire": "^1.2.0",
+    "phantomjs": "^1.9.15",
+    "uglify-js": "^2.4.16",
+    "uglifyify": "^3.0.1"
+  }
+}
