@@ -1,3 +1,4 @@
+var extend = require('../utils').extend;
 require('native-promise-only');
 var axios = require('axios');
 
@@ -6,10 +7,13 @@ var Axios = function(settings) {
     var options = {
       method: settings.type.toLowerCase(),
       url: settings.url,
-      responseType: "text"
+      responseType: "text",
+      headers: {
+        'Content-Type': 'application/json;charset=utf-8'
+      }
     };
     if (settings.headers) {
-      options.headers = settings.headers;
+      options.headers = extend(options.headers, settings.headers);
     }
     if (settings.processData) {
       options.params = settings.data;
