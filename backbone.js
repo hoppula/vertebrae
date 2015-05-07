@@ -332,7 +332,11 @@ module.exports = function(BackboneContext, Model) {
         if (options.wait) collection.add(model, options);
         if (success) success(model, resp, options);
       };
-      model.save(null, options);
+
+      var savePromise = model.save(null, options);
+      if (savePromise) {
+        savePromise.catch(function(err) {});
+      }
       return model;
     },
 
